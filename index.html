@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fluid PM Readout — I tried to replace Fluid</title>
+<style>
+/* ============================================================
+   Design tokens — Microsoft Loop-inspired
+   calming · soft · warm · comfortable
+   warm-cream surfaces · soft coral · soft lavender
+   NOTE: the --blue* slot now holds CORAL (warm hero),
+         the --amber* slot now holds LAVENDER (soft accent).
+         Names kept stable so existing rules keep working.
+   ============================================================ */
+:root{
+  /* ---- surfaces (cool blue-violet paper) ---- */
+  --bg: oklch(98.6% 0.006 280);
+  --bg-2: oklch(97.4% 0.012 270);
+  --surface: oklch(99.4% 0.004 280);
+  --surface-soft: oklch(98.5% 0.006 275);
+  --surface-tint: oklch(97.4% 0.011 270);
+  --border: oklch(90% 0.016 268);
+  --border-soft: oklch(93.5% 0.011 268);
+
+  /* ---- ink (cool blue-violet charcoal) ---- */
+  --ink-strong: oklch(22% 0.028 268);
+  --ink: oklch(30% 0.024 268);
+  --ink-soft: oklch(48% 0.024 268);
+  --ink-faint: oklch(62% 0.02 268);
+
+  /* ---- GREEN (in the --blue slot): mint hero / keep / SharedTree native / primary ---- */
+  --blue: oklch(58% 0.10 158);
+  --blue-strong: oklch(50% 0.11 158);
+  --blue-soft: oklch(93.5% 0.045 158);
+  --blue-tint: oklch(97% 0.02 160);
+  --blue-line: oklch(85% 0.055 160);
+
+  /* ---- VIOLET (in the --amber slot): purple accent / AI / emphasis / my demo ---- */
+  --amber: oklch(70% 0.11 298);
+  --amber-deep: oklch(56% 0.15 293);
+  --amber-soft: oklch(94.5% 0.04 295);
+  --amber-line: oklch(88% 0.055 295);
+
+  /* ---- slate = neutral external engines (cool) ---- */
+  --slate: oklch(54% 0.02 268);
+  --slate-soft: oklch(95.8% 0.01 268);
+
+  /* ---- shadows (soft, blue-gray) ---- */
+  --shadow-1: 0 2px 10px rgba(60,70,100,.06);
+  --shadow-2: 0 10px 28px rgba(60,70,100,.09);
+  --shadow-3: 0 22px 50px rgba(58,68,98,.13);
+  --shadow-4: 0 34px 72px -22px rgba(45,55,90,.22);
+
+  /* ---- radii (rounder = friendlier) ---- */
+  --r-sm: 14px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-pill: 999px;
+
+  /* ---- type scale (fixed roles) ---- */
+  --t-display: 4.6cqw;
+  --t-h1: 2.9cqw;
+  --t-h2: 2.05cqw;
+  --t-lead: 1.65cqw;
+  --t-body: 1.42cqw;
+  --t-label: 1.25cqw;
+  --t-micro: 1.08cqw;
+
+  /* ---- spacing scale ---- */
+  --sp-1: .5cqw;
+  --sp-2: 1cqw;
+  --sp-3: 1.6cqw;
+  --sp-4: 2.4cqw;
+  --sp-5: 3.4cqw;
+  --sp-6: 4.8cqw;
+
+  --font: "Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --ease: cubic-bezier(.22,.61,.36,1);
+
+  /* ---- legacy aliases (kept so no rule breaks) ---- */
+  --surface-raised: var(--surface);
+  --surface-muted: var(--slate-soft);
+  --surface-subtle: var(--surface-tint);
+  --border-strong: var(--blue-line);
+  --ink-muted: var(--ink-soft);
+  --mint: var(--blue);
+  --mint-strong: var(--blue-strong);
+  --mint-soft: var(--blue-soft);
+  --violet: var(--amber-deep);
+  --violet-soft: var(--amber-soft);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --shadow-xl: var(--shadow-4);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  color:var(--ink);
+  background:
+    radial-gradient(1150px 640px at 8% -10%, var(--amber-soft), transparent 58%),
+    radial-gradient(1000px 640px at 104% 112%, var(--blue-soft), transparent 56%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* faint canvas dot-grid, echoing the prototype canvas */
+body::before{
+  content:"";
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:radial-gradient(circle, rgba(85,92,130,.05) 1px, transparent 1px);
+  background-size:30px 30px;
+  mask-image:radial-gradient(ellipse at center, #000 46%, transparent 100%);
+}
+
+/* ============================================================ stage ============================================================ */
+.deck{
+  position:fixed; inset:0; z-index:1;
+  display:grid; place-items:center;
+}
+.stage{
+  position:relative;
+  width:min(95vw, calc(93vh * 16 / 9));
+  aspect-ratio:16/9;
+  container-type:inline-size;
+}
+.slide{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  justify-content:flex-start;
+  padding:4cqw 8cqw;
+  opacity:0; visibility:hidden;
+  transform:translateY(14px) scale(.992);
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+  pointer-events:none;
+}
+.slide.active{
+  opacity:1; visibility:visible; transform:none; pointer-events:auto;
+}
+.slide.cover{justify-content:center}
+.shead{flex:0 0 auto; min-height:9cqw; margin-bottom:var(--sp-3)}
+.shead .title{margin-top:.4cqw}
+.shead-note{font-size:var(--t-label);color:var(--ink-faint);font-weight:500;margin-top:var(--sp-2)}
+.sbody{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; justify-content:center}
+.sbody.top{justify-content:flex-start}
+.slide.vcenter{justify-content:center}
+.slide.vcenter .sbody{flex:0 0 auto}
+.sbody > *{flex-shrink:0}
+.sbody > :first-child{margin-top:0}
+.slide.cover .shead{min-height:0}
+
+/* ============================================================ typography (fixed roles) ============================================================ */
+.eyebrow{
+  font-size:var(--t-body); font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--blue-strong); margin-bottom:var(--sp-2);
+  display:flex; align-items:center; gap:.8cqw;
+}
+.eyebrow .dot{width:2.6cqw;height:.32cqw;border-radius:999px;background:var(--blue)}
+h1.title{
+  font-size:var(--t-display); line-height:1.05; font-weight:700; letter-spacing:-.02em;
+  color:var(--ink-strong);
+}
+h1.title.small{font-size:var(--t-h1); line-height:1.12}
+h1.title.small.s8t{font-size:var(--t-h2); line-height:1.18}
+h1.title em,h1.title .ai{font-style:normal; color:var(--amber-deep)}
+/* fill each line to the right edge (fewest lines), only avoid an orphan last word */
+h1.title,.subtitle,.s1-question,.s1-followup,.s2-punch,.s4-cap,.verdict-lead,.s8-close,.strip-cap,.s6-close{text-wrap:pretty}
+.subtitle{
+  font-size:var(--t-lead); font-weight:400; color:var(--ink-soft);
+  margin-top:var(--sp-4); line-height:1.45;
+}
+.kicker{font-size:var(--t-label);font-weight:700;letter-spacing:.16em;color:var(--blue-strong);text-transform:uppercase;margin-bottom:var(--sp-3)}
+
+/* generic reveal steps — disabled: all content shows at once */
+[data-step]{opacity:1; transform:none}
+[data-step].shown{opacity:1; transform:none}
+
+/* ============================================================ S1 cover ============================================================ */
+.s1-title{
+  font-size:var(--t-h1); line-height:1.1; font-weight:700; letter-spacing:-.015em;
+  color:var(--ink-strong);
+}
+.s1-sub{margin-top:var(--sp-3); font-size:var(--t-body)}
+.s1-qa{margin-top:var(--sp-6)}
+.s1-question{
+  font-size:var(--t-h2); color:var(--ink-strong); font-weight:600; line-height:1.28;
+}
+.s1-question b{color:var(--ink-strong); font-weight:700}
+.s1-followup{margin-top:var(--sp-3); font-size:var(--t-label); line-height:1.32; color:var(--ink-strong); font-weight:600}
+.s1-answer{
+  margin-top:var(--sp-4); font-size:var(--t-display); line-height:1.04; font-weight:700;
+  letter-spacing:-.02em; color:var(--ink-strong);
+}
+.s1-answer em{font-style:normal; color:var(--amber-deep)}
+.s3-split{display:flex;gap:5cqw;align-items:center;width:100%}
+.s3-text{flex:1.3;min-width:0}
+.s3-shot{flex:0.9;margin:0;min-width:0}
+.s3-shot img{width:100%;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow-2)}
+.s3-shot figcaption{margin-top:.9cqw;font-size:var(--t-label);color:var(--ink-soft);font-weight:600}
+.slide.p1shot{padding-right:3.5cqw}
+.p1shot .s3-split{gap:5cqw;align-items:stretch}
+.p1shot .s3-text{flex:1.25}
+.p1shot .s3-shot{flex:1.15;display:flex;flex-direction:column}
+.p1shot .s3-shot img{width:100%;flex:1;min-height:0;object-fit:contain;object-position:top}
+.p1shot .s3-shot figcaption{text-align:center;font-size:var(--t-body);margin-top:.6cqw}
+.p1shot .s3-shot figcaption em{color:var(--violet);font-style:normal;font-weight:700}
+.s3 .s1-question,.s3 .s1-followup,.s3 .s1-answer{font-size:var(--t-lead);line-height:1.4}
+.p2arch{align-items:center;text-align:center}
+.p2dg{display:flex;flex-direction:column;align-items:center;gap:.7cqw;width:100%}
+.p2dg-row{display:flex;gap:1cqw;justify-content:center;flex-wrap:wrap;width:100%}
+.p2dg-box{background:var(--surface-subtle);border:1px solid var(--border);border-radius:1cqw;padding:.8cqw 1.5cqw;font-size:var(--t-body);font-weight:600;color:var(--ink-strong);text-align:center}
+.p2dg-box small{display:block;font-size:var(--t-label);font-weight:500;color:var(--ink-faint);margin-top:.2cqw}
+.p2dg-box.hero{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-strong)}
+.p2dg-box.store{background:var(--slate-soft)}
+.p2dg-arr{color:var(--ink-faint);font-weight:700;font-size:var(--t-body);line-height:1}
+.p2cover .s3-text{flex:1}
+.p2cover .s3-shot{flex:1.3}
+.p2cover .p2dg{gap:.4cqw}
+.p2cover .p2dg-box{padding:.45cqw .9cqw;font-size:1.5cqw}
+.p2cover .p2dg-box small{font-size:1.15cqw;margin-top:.1cqw}
+.p2cover .p2dg-arr{font-size:1.15cqw;line-height:.7}
+.p2phase{font-size:var(--t-lead);font-weight:800;color:var(--violet);margin-top:1.3cqw;letter-spacing:.01em}
+
+/* ============================================================ S2 before/after ============================================================ */
+.before-after{display:grid; grid-template-columns:1fr auto 1fr; gap:2.4cqw; align-items:stretch; margin-top:0}
+.ba-card{
+  background:var(--surface-soft); border:none; border-radius:var(--r-lg);
+  padding:3cqw; box-shadow:var(--shadow-1); display:flex; flex-direction:column; gap:1.2cqw;
+}
+.ba-card .tag{font-size:var(--t-label);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.ba-card .big{font-size:var(--t-h2);font-weight:700;color:var(--ink-strong);line-height:1.18}
+.ba-card .meta{font-size:var(--t-body);color:var(--ink-soft)}
+.ba-card.after{background:var(--blue-soft)}
+.ba-card.after .big{color:var(--blue-strong)}
+.ba-arrow{display:flex;align-items:center;font-size:var(--t-h2);color:var(--blue);font-weight:700}
+.s2-punch{
+  margin-top:var(--sp-6); font-size:var(--t-h2); font-weight:600; color:var(--ink-strong); line-height:1.32;
+}
+.s2-punch b{font-weight:700;color:var(--amber-deep)}
+
+/* ============================================================ S3 four cards ============================================================ */
+.req-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:1.6cqw; margin-top:var(--sp-6)}
+.req-card{
+  background:var(--surface-soft); border:none; border-radius:var(--r-md);
+  padding:2.2cqw 2cqw; box-shadow:var(--shadow-1); display:flex; flex-direction:column; gap:.9cqw;
+  position:relative; overflow:hidden;
+}
+.req-card::before{content:none}
+.req-card .n{font-size:var(--t-body);font-weight:800;color:var(--accent,var(--blue))}
+.req-card h3{font-size:var(--t-lead);font-weight:700;color:var(--ink-strong);line-height:1.15}
+.req-card p{font-size:var(--t-body);color:var(--ink-soft);line-height:1.42}
+.req-card:nth-child(1),.req-card:nth-child(2),.req-card:nth-child(3){--accent:var(--blue)}
+.req-card:nth-child(4){--accent:var(--amber-deep)}
+.s3-cap{margin-top:var(--sp-5);font-size:var(--t-h2);font-weight:600;color:var(--ink-strong)}
+.s3-cap b{color:var(--amber-deep);font-weight:700}
+
+/* ============================================================ S4 two ideas ============================================================ */
+.slide.s4 .shead{min-height:6.2cqw;margin-bottom:var(--sp-2)}
+.slide.s4 .sbody{justify-content:flex-start;padding-top:.4cqw}
+.ideas{display:flex;gap:1.4cqw;margin-top:0;flex-wrap:wrap}
+.idea{
+  background:var(--surface-soft);border:none;border-radius:var(--r-md);
+  padding:1.6cqw 2.2cqw;box-shadow:none;display:flex;flex-direction:column;align-items:flex-start;gap:.35cqw;flex:1 1 0;
+}
+.idea .num{font-size:var(--t-label);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);flex:0 0 auto}
+.idea h3{font-size:var(--t-h2);font-weight:700;margin:0;color:var(--ink-strong)}
+.idea.bar h3{color:var(--blue-strong)}
+.idea-sub{margin:.15cqw 0 0;font-size:var(--t-label);line-height:1.3;color:var(--ink-soft);font-weight:500}
+.formula{
+  margin-top:var(--sp-5); display:flex; align-items:stretch; justify-content:flex-start; gap:0; flex-wrap:nowrap;
+  font-size:var(--t-lead); font-weight:600; border-radius:var(--r-lg); overflow:hidden; box-shadow:var(--shadow-2);
+}
+.formula .term{
+  padding:2.4cqw 2.4cqw;line-height:1.25;text-align:left;flex:1 1 0;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.formula .term.fluid{background:var(--blue-soft);color:var(--blue-strong)}
+.formula .term.ext{background:var(--surface-soft);color:var(--ink)}
+.formula .vs{font-size:var(--t-body);font-weight:800;color:#fff;background:var(--ink-faint);display:flex;align-items:center;justify-content:center;flex:0 0 auto;padding:0 1.4cqw;letter-spacing:.05em}
+.formula .term small{display:block;font-size:var(--t-body);font-weight:500;opacity:.9;margin-top:.5cqw}
+.s4-cap{margin-top:var(--sp-5);text-align:left;font-size:var(--t-h2);font-weight:600;color:var(--ink-strong)}
+.s4-cap b{color:var(--amber-deep);font-weight:700}
+
+/* ============================================================ S5 Coverage Strip ============================================================ */
+.strip-head-line{display:flex;align-items:baseline;justify-content:space-between;gap:2cqw}
+.strip-hint{font-size:var(--t-label);color:var(--ink-faint);font-weight:500}
+.strip-hint b{color:var(--blue-strong)}
+/* ============================================================ S5 framework tabs + detail ============================================================ */
+.fw-tabs{display:flex;gap:1.2cqw;margin-top:var(--sp-2)}
+.fw-tab{
+  flex:1 1 0;font-family:var(--font);cursor:pointer;text-align:center;
+  padding:1.3cqw 1cqw;border-radius:var(--r-md);border:1.5px solid var(--border);
+  background:var(--surface-soft);color:var(--ink);box-shadow:none;
+  display:flex;flex-direction:column;align-items:center;gap:.5cqw;
+  transition:border-color .2s var(--ease),background .2s var(--ease),transform .12s var(--ease);
+}
+.fw-tab:hover{border-color:var(--blue-line);transform:translateY(-2px)}
+.fw-tab .ft-name{font-size:var(--t-lead);font-weight:700;color:var(--ink-strong);line-height:1}
+.fw-tab .ft-lane{font-size:var(--t-label);font-weight:500;color:var(--ink-soft);line-height:1.2}
+.fw-tab.on{background:var(--blue-soft);border-color:var(--blue)}
+.fw-tab.on .ft-name{color:var(--blue-strong)}
+.fw-tab.hero{border-style:solid}
+.fw-tab.hero .ft-name{color:var(--blue-strong)}
+.fw-tab.hero.on{background:linear-gradient(135deg,var(--blue-soft),color-mix(in oklch,var(--blue-soft) 70%,var(--blue) 18%))}
+.fw-tab .ft-tag{font-size:var(--t-micro);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--amber-deep);background:var(--amber-soft);border:1px solid var(--amber-line);border-radius:var(--r-pill);padding:.05cqw .6cqw}
+
+.fw-detail{
+  margin-top:var(--sp-3);background:var(--surface-soft);border-radius:var(--r-lg);
+  padding:2.2cqw 2.6cqw;box-shadow:var(--shadow-1);min-height:13cqw;
+  display:grid;grid-template-columns:.9fr 1fr 1.25fr;gap:2.4cqw;align-items:start;
+  border-left:.5cqw solid var(--blue);
+}
+.fw-detail.hero{border-left-color:var(--blue)}
+.fw-detail .fd-col .lab{font-size:var(--t-label);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:.7cqw}
+.fw-detail .fd-col.why .lab{color:var(--amber-deep)}
+.fw-detail.hero .fd-col.why .lab{color:var(--blue-strong)}
+.fw-detail .fd-col .txt{font-size:var(--t-body);color:var(--ink);line-height:1.4}
+.fw-detail .fd-col.why .txt{color:var(--ink-strong);font-weight:600}
+.fw-detail .fd-col.how .lab{color:var(--ink-faint)}
+.fw-detail .fd-col.how .txt{font-size:var(--t-label);color:var(--ink-soft)}
+.fw-detail .fd-head{grid-column:1/-1;display:flex;align-items:center;gap:1cqw;margin-bottom:.4cqw}
+.fw-detail .fd-head .fd-name{font-size:var(--t-h2);font-weight:800;color:var(--ink-strong)}
+.fw-detail.hero .fd-head .fd-name{color:var(--blue-strong)}
+.fw-detail .fd-head .fd-badge{font-size:var(--t-micro);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--blue-strong);background:var(--blue-soft);border-radius:var(--r-pill);padding:.3cqw 1cqw}
+.strip-cap{
+  margin-top:var(--sp-3);text-align:left;font-size:var(--t-h2);font-weight:600;color:var(--ink-strong);line-height:1.3;
+}
+.strip-cap em{font-style:normal;color:var(--blue-strong)}
+
+/* ============================================================ S6 iceberg ============================================================ */
+.iceberg-wrap{
+  position:relative; margin-top:1.2cqw; height:25cqw; border-radius:var(--r-lg); overflow:hidden;
+  border:1px solid var(--border); box-shadow:var(--shadow-2);
+  background:linear-gradient(180deg,
+    var(--surface) 0%, var(--surface) 30%,
+    oklch(95.5% 0.026 235) 30%, oklch(88% 0.05 235) 100%);
+}
+/* faint submerged-mass triangle, widening downward (the iceberg hint) */
+.iceberg-wrap::after{
+  content:""; position:absolute; left:50%; top:30%; bottom:0; width:64%; transform:translateX(-50%);
+  background:linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.05));
+  clip-path:polygon(34% 0, 66% 0, 100% 100%, 0 100%); z-index:1; pointer-events:none;
+}
+/* above water: the small tip */
+.ice-above{
+  position:absolute; left:0; right:0; top:0; height:30%; z-index:4;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.7cqw; padding:0 4cqw;
+}
+.ice-above .cap{font-size:var(--t-micro);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.ice-above .tiprow{display:flex;align-items:center;justify-content:center;gap:1.2cqw;flex-wrap:nowrap}
+.ice-above .tiprow span{font-size:var(--t-body);font-weight:600;color:var(--ink-strong);white-space:nowrap}
+.ice-above .tiprow i{width:.42cqw;height:.42cqw;border-radius:50%;background:var(--blue-line)}
+/* waterline */
+.waterline{position:absolute;left:0;right:0;top:30%;height:0;border-top:1.5px dashed rgba(70,105,150,.5);z-index:3}
+.waterline span{
+  position:absolute;right:1.6cqw;top:.5cqw;font-size:var(--t-micro);font-weight:600;color:var(--ink-soft);
+  letter-spacing:.14em;text-transform:uppercase;
+}
+/* below water: the large mass */
+.ice-below{
+  position:absolute; left:0; right:0; top:30%; bottom:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1cqw; padding:1.4cqw 4cqw;
+}
+.ice-below .cap{font-size:var(--t-micro);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#1a3c5e}
+.ice-below .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1cqw;width:100%;max-width:72cqw}
+.ice-below .grid span{
+  font-size:var(--t-label);font-weight:600;color:#16365a;text-align:center;
+  min-height:4cqw;display:flex;align-items:center;justify-content:center;line-height:1.2;
+  background:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.7);border-radius:var(--r-sm);
+  padding:.55cqw;box-shadow:0 3px 10px rgba(20,55,95,.08);
+}
+/* asymmetry caption — moved OUT of the box, no overlap */
+.ice-caption{display:flex;justify-content:center;gap:3.4cqw;margin-top:1.2cqw;flex-wrap:wrap}
+.ice-caption .a{display:flex;align-items:center;gap:.8cqw;font-size:var(--t-body);font-weight:600;color:var(--ink)}
+.ice-caption .a .k{font-size:var(--t-label);font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.35cqw 1.1cqw;border-radius:var(--r-pill);color:#fff}
+.ice-caption .fluid .k{background:var(--blue-strong)}
+.ice-caption .ext .k{background:var(--amber-deep)}
+.s6-close{margin-top:1.8cqw;padding-top:1.5cqw;border-top:1px solid var(--border);font-size:var(--t-body);line-height:1.4;color:var(--ink-strong);font-weight:500;text-align:center;max-width:80cqw;margin-left:auto;margin-right:auto}
+.s6-close b{color:var(--amber-deep);font-weight:700}
+
+/* ============================================================ S7 demo ============================================================ */
+.s7-freeze{margin-top:var(--sp-4);font-size:var(--t-h2);font-weight:700;color:var(--ink-strong);letter-spacing:-.005em}
+.s7-freeze span{color:var(--amber-deep);font-weight:800}
+.s7-goals{margin-top:var(--sp-5);display:flex;flex-direction:column;gap:1.1cqw}
+.s7-goals .goal{display:flex;align-items:center;gap:1.2cqw;font-size:var(--t-lead);color:var(--ink);font-weight:500}
+.s7-goals .goal .gn{flex:0 0 auto;width:2.6cqw;height:2.6cqw;border-radius:50%;background:var(--blue-soft);color:var(--blue-strong);font-size:var(--t-body);font-weight:800;display:flex;align-items:center;justify-content:center}
+.demo-cta{
+  margin-top:var(--sp-5); display:inline-flex; align-items:center; gap:1.2cqw;
+  font-size:var(--t-lead); font-weight:700; color:#fff; text-decoration:none;
+  background:var(--blue); border:0; cursor:pointer; font-family:inherit;
+  padding:1.5cqw 2.8cqw; border-radius:var(--r-pill);
+  box-shadow:0 12px 28px -8px color-mix(in oklch, var(--blue) 55%, transparent);
+  transition:transform .15s var(--ease), box-shadow .2s var(--ease), background .2s;
+  width:max-content;
+}
+.demo-cta:hover{background:var(--blue-strong);transform:translateY(-2px);box-shadow:0 20px 42px -8px color-mix(in oklch,var(--blue) 60%, transparent)}
+.demo-cta .arr{font-size:var(--t-h2)}
+.video-back{position:fixed;inset:0;background:rgba(6,8,12,.94);display:none;place-items:center;z-index:200}
+.video-back.open{display:grid}
+.video-frame{position:relative;width:min(92vw,163vh);aspect-ratio:16/9;border-radius:var(--r-md);overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.7)}
+.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.video-close{position:fixed;top:3vh;right:3vw;width:5vh;height:5vh;min-width:38px;min-height:38px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;font-size:2.4vh;line-height:1;cursor:pointer;z-index:210}
+.video-close:hover{background:rgba(255,255,255,.3)}
+.verdict-lead{font-size:var(--t-lead);line-height:1.42;color:var(--ink-strong);font-weight:500}
+.verdict-lead b{color:var(--blue-strong);font-weight:700}
+.verdict-wins{margin-top:var(--sp-4)}
+.verdict-wins .vw-head{font-size:var(--t-lead);line-height:1.42;color:var(--ink-strong);font-weight:600;margin-bottom:1.1cqw}
+.verdict-wins .vw-head b{color:var(--blue-strong);font-weight:700}
+.verdict-wins ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.9cqw}
+.verdict-wins li{font-size:var(--t-lead);line-height:1.4;color:var(--ink-strong);font-weight:500;padding-left:1.7cqw;position:relative}
+.verdict-wins li::before{content:"";position:absolute;left:.2cqw;top:.62em;width:.55cqw;height:.55cqw;border-radius:50%;background:var(--blue-strong)}
+.verdict-wins li b{color:var(--blue-strong);font-weight:700}
+.verdict-ext{margin-top:var(--sp-5);background:var(--surface-soft);border-radius:var(--r-lg);padding:1.8cqw 2.2cqw;box-shadow:var(--shadow-1);border-left:.5cqw solid var(--amber-deep)}
+.verdict-ext .ve-head{font-size:var(--t-label);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--amber-deep);margin-bottom:1.1cqw}
+.verdict-ext .ve-chips{display:flex;gap:1.2cqw;flex-wrap:wrap}
+.verdict-ext .ve-chips span{font-size:var(--t-body);font-weight:600;color:var(--ink-strong);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-pill);padding:.6cqw 1.4cqw}
+.run-shots{display:flex;gap:1.6cqw}
+.run-shots figure{flex:1;margin:0;display:flex;flex-direction:column;gap:.7cqw}
+.run-shots img{width:100%;height:27cqw;object-fit:contain;object-position:center;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow-1);background:var(--surface-soft)}
+.run-shots figcaption{font-size:var(--t-label);color:var(--ink-soft);font-weight:600;text-align:center}
+.e2e-lead{font-size:var(--t-lead);font-weight:600;color:var(--ink-strong);margin-bottom:.8cqw}
+.e2e-steps{font-size:var(--t-lead);color:var(--ink-strong);line-height:1.6}
+.e2e-steps b{color:var(--blue-strong);font-weight:700}
+.lc-table{width:100%;border-collapse:collapse;font-size:var(--t-body)}
+.lc-table th{text-align:left;font-size:var(--t-label);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:700;padding:.55cqw .9cqw;border-bottom:2px solid var(--blue-line)}
+.lc-table td{padding:.55cqw .9cqw;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.28;color:var(--ink)}
+.lc-table td b{color:var(--blue-strong);font-weight:700}
+.lc-table code{font-size:.9em;background:var(--surface-subtle);padding:.05em .3em;border-radius:4px;color:var(--ink-strong)}
+.lc-table tr:last-child td{border-bottom:none}
+.demo-note{margin-top:var(--sp-4);font-size:var(--t-label);color:var(--ink-faint)}
+.demo-note code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-tint);padding:.2cqw .7cqw;border-radius:6px;font-size:var(--t-micro);color:var(--blue-strong)}
+
+/* ============================================================ S8 conclusion ============================================================ */
+.concl{display:flex;flex-direction:column;gap:1.6cqw;margin-top:var(--sp-5);max-width:94%}
+.concl .row{display:flex;gap:1.8cqw;align-items:flex-start}
+.concl .row .k{
+  flex:0 0 18cqw;width:18cqw;font-size:var(--t-label);font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:#fff;background:var(--blue);border-radius:var(--r-pill);padding:.7cqw 1cqw;margin-top:.3cqw;text-align:center;
+}
+.concl .row.b2 .k{background:var(--blue)}
+.concl .row.b3 .k{background:var(--amber-deep)}
+.concl .row .v{flex:1 1 0;font-size:var(--t-lead);color:var(--ink-strong);line-height:1.34;font-weight:500}
+.concl .row .v b{font-weight:700}
+.concl .row .v small{display:block;font-size:var(--t-body);color:var(--ink-soft);font-weight:400;margin-top:.35cqw}
+.concl .row .v ul.finish{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.45cqw}
+.concl .row .v ul.finish li{position:relative;padding-left:2.2cqw}
+.concl .row .v ul.finish li::before{content:"→";position:absolute;left:0;color:var(--amber-deep);font-weight:700}
+.s8-close{
+  margin-top:var(--sp-4);font-size:var(--t-h2);font-weight:800;color:var(--ink-strong);letter-spacing:-.01em;line-height:1.2;
+}
+.s8-close em{font-style:normal;color:var(--amber-deep)}
+
+/* ============================================================ nav / chrome ============================================================ */
+.progress{
+  position:fixed; left:0; right:0; bottom:0; height:3px; z-index:30;
+  background:transparent;
+}
+.progress .fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--amber));width:0;transition:width .4s var(--ease)}
+.chrome{
+  position:fixed; right:18px; bottom:16px; z-index:30;
+  display:flex; align-items:center; gap:12px; color:var(--ink-faint);
+  font-size:13px; font-weight:600;
+}
+.chrome .nbtn{
+  width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface);
+  color:var(--ink-muted);font-size:16px;cursor:pointer;display:grid;place-items:center;box-shadow:var(--shadow-sm);
+}
+.chrome .nbtn:hover{color:var(--ink-strong);border-color:var(--border-strong)}
+.counter{font-variant-numeric:tabular-nums}
+.dots{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:30;display:flex;gap:8px}
+.dots b{width:8px;height:8px;border-radius:50%;background:var(--border-strong);opacity:.4;cursor:pointer;transition:all .2s}
+.dots b.on{opacity:1;background:var(--blue);width:22px;border-radius:999px}
+.hint{
+  position:fixed;left:18px;bottom:16px;z-index:30;font-size:12.5px;color:var(--ink-faint);font-weight:500;
+}
+.hint kbd{font-family:var(--font);background:var(--surface);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:11.5px;color:var(--ink-muted)}
+
+/* ============================================================ drill-down modal ============================================================ */
+.modal-back{
+  position:fixed;inset:0;z-index:50;background:rgba(28,34,54,.42);backdrop-filter:blur(3px);
+  display:grid;place-items:center;opacity:0;visibility:hidden;transition:opacity .25s var(--ease);
+}
+.modal-back.open{opacity:1;visibility:visible}
+.modal{
+  width:min(680px,86vw);background:var(--surface);border-radius:var(--r-xl);box-shadow:var(--shadow-xl);
+  border:1px solid var(--border);overflow:hidden;transform:translateY(16px) scale(.97);transition:transform .3s var(--ease);
+}
+.modal-back.open .modal{transform:none}
+.modal .head{padding:24px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface-subtle)}
+.modal .head .ttl{font-size:26px;font-weight:800;color:var(--ink-strong);display:flex;align-items:center;gap:12px}
+.modal .head .ttl .badge{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:var(--mint-soft);color:var(--mint-strong)}
+.modal .close{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--surface);font-size:18px;cursor:pointer;color:var(--ink-muted)}
+.modal .body{padding:26px 28px;display:grid;grid-template-columns:140px 1fr;gap:22px;align-items:start}
+.modal .glyph{display:grid;place-items:center;background:var(--surface-subtle);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;height:130px}
+.modal .fields{display:flex;flex-direction:column;gap:16px}
+.modal .field .lab{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:4px}
+.modal .field .txt{font-size:16px;color:var(--ink);line-height:1.45}
+.modal .field.why .txt{color:var(--ink-strong);font-weight:500}
+.modal .field.why .lab{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-strong);margin-bottom:4px}
+.modal.hero-modal .head .ttl .badge{background:var(--blue);color:#fff}
+.modal.hero-modal .field.why .lab{color:var(--blue-strong)}
+
+@media (max-width:640px){
+  .modal .body{grid-template-columns:1fr}
+  .modal .glyph{justify-self:center;width:130px}
+}
+
+/* ============================================================ Project 2 — self-host (Routerlicious + Redpanda) ============================================================ */
+.p2-cmp{width:100%;border-collapse:separate;border-spacing:0 .42cqw;margin-top:var(--sp-2)}
+.p2-cmp th{font-size:var(--t-label);font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);text-align:left;padding:0 1.4cqw .5cqw}
+.p2-cmp td{background:var(--surface-soft);padding:.9cqw 1.4cqw;font-size:var(--t-body);color:var(--ink);vertical-align:middle}
+.p2-cmp td:first-child{border-radius:var(--r-sm) 0 0 var(--r-sm);font-weight:700;color:var(--ink-strong)}
+.p2-cmp td:last-child{border-radius:0 var(--r-sm) var(--r-sm) 0;color:var(--ink-soft)}
+.p2-cmp tr.hero td{background:var(--blue-soft);color:var(--blue-strong);font-weight:700}
+.p2-cmp .same{color:var(--ink-faint);font-size:var(--t-label);font-variant-numeric:tabular-nums}
+.p2-cmp .num{font-variant-numeric:tabular-nums}
+
+.p2-dec{display:flex;flex-direction:column;gap:1.1cqw}
+.p2-dec .d{display:flex;gap:1.2cqw;align-items:baseline;font-size:var(--t-lead);color:var(--ink);line-height:1.34}
+.p2-dec .d .num{flex:0 0 auto;width:2.4cqw;height:2.4cqw;border-radius:50%;background:var(--blue-soft);color:var(--blue-strong);font-size:var(--t-body);font-weight:800;display:flex;align-items:center;justify-content:center}
+.p2-dec .d b{color:var(--blue-strong);font-weight:700}
+.why-head{font-size:var(--t-body);font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--blue-strong);margin-bottom:.9cqw}
+
+.p2-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6cqw;margin-top:var(--sp-4)}
+.p2-stat{background:var(--blue-soft);border-radius:var(--r-lg);padding:2.2cqw 1.6cqw;text-align:center;box-shadow:var(--shadow-1)}
+.p2-stat .big{font-size:var(--t-display);font-weight:800;color:var(--blue-strong);line-height:1;letter-spacing:-.02em}
+.p2-stat .lab{font-size:var(--t-body);color:var(--ink-soft);margin-top:.9cqw;line-height:1.3}
+
+.p2-flow{display:flex;flex-wrap:wrap;gap:.7cqw;align-items:center;margin-top:var(--sp-2)}
+.p2-flow .st{font-size:var(--t-label);font-weight:600;color:var(--ink-soft);white-space:nowrap}
+.p2-flow .st.key{color:var(--ink-strong);font-weight:700}
+.p2-flow .st.done{color:var(--ink-soft)}
+.p2-flow .sep{color:var(--ink-faint);font-weight:400;font-size:var(--t-label)}
+.p2-gap{margin-top:var(--sp-3)}
+
+/* journey "today" plan callout */
+.j-plan{margin-top:var(--sp-4);display:flex;align-items:center;gap:1.4cqw;background:var(--surface-soft);border:1px solid var(--border);border-left:.5cqw solid var(--blue);border-radius:var(--r-md);padding:1.2cqw 1.6cqw;font-size:var(--t-body);color:var(--ink-strong);font-weight:600}
+.j-plan-k{flex:0 0 auto;font-size:var(--t-label);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--blue);border-radius:var(--r-pill);padding:.45cqw 1.2cqw}
+.j-plan b{color:var(--blue-strong);font-weight:700}
+
+/* P2-3 architecture comparison cards */
+.arch-groups{display:grid;grid-template-columns:1fr 1fr;gap:2.4cqw;margin-top:var(--sp-1)}
+.arch-group{display:flex;flex-direction:column;gap:.8cqw}
+.arch-group-lab{font-size:var(--t-body);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.arch-group-lab.explored{color:var(--amber-deep)}
+.arch-cards{display:flex;flex-direction:column;gap:.9cqw;flex:1}
+.arch-card{font-family:var(--font);text-align:left;cursor:pointer;flex:1;background:var(--surface-soft);border:1.5px solid var(--border);border-radius:var(--r-md);padding:1.4cqw 2cqw;display:flex;flex-direction:column;gap:.75cqw;transition:border-color .15s var(--ease),transform .12s var(--ease),box-shadow .15s var(--ease)}
+.arch-card:hover{border-color:var(--blue-line);transform:translateY(-2px);box-shadow:var(--shadow-2)}
+.arch-card.hero{border-color:var(--blue);background:var(--blue-soft)}
+.arch-card .ac-name{font-size:var(--t-lead);font-weight:700;color:var(--ink-strong);display:flex;align-items:baseline;gap:.7cqw}
+.arch-card.hero .ac-name{color:var(--blue-strong)}
+.arch-card .ac-name small{font-size:var(--t-label);font-weight:600;color:var(--ink-faint)}
+.arch-card.hero .ac-name small{color:var(--blue-strong)}
+.arch-card .ac-fit{font-size:var(--t-label);color:var(--ink-soft);line-height:1.3}
+.arch-card.hero .ac-fit{color:var(--blue-strong)}
+.arch-card .ac-fact{font-size:var(--t-body);line-height:1.3;color:var(--ink)}
+.arch-card .ac-fact b{font-weight:700;color:var(--ink-faint);margin-right:.5cqw}
+.arch-card .ac-fact b.pro{color:var(--blue-strong)}
+.arch-card .ac-fact b.con{color:var(--ink-soft)}
+.arch-card.hero .ac-fact{color:var(--ink-strong)}
+.arch-card .ac-meta{display:flex;gap:1cqw;align-items:center;flex-wrap:wrap}
+.arch-card .ac-pass{font-size:var(--t-label);font-weight:700;color:var(--blue-strong);background:var(--blue-soft);border-radius:var(--r-pill);padding:.2cqw 1cqw}
+.arch-card.hero .ac-pass{background:#fff}
+.arch-card .ac-cost{font-size:var(--t-label);color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.arch-card .ac-open{font-size:var(--t-label);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--amber-deep);margin-top:auto}
+
+/* architecture diagram (inside modal) */
+.modal .body.arch-modal-body{display:block;padding:22px 28px 26px}
+.arch-diagram{display:flex;flex-direction:column;align-items:center;gap:8px}
+.arch-diagram .dg-row{display:flex;gap:10px;align-items:stretch;justify-content:center;flex-wrap:wrap}
+.arch-diagram .dg-box{background:var(--surface-subtle);border:1px solid var(--border);border-radius:10px;padding:7px 13px;font-size:13.5px;font-weight:600;color:var(--ink);text-align:center;line-height:1.25}
+.arch-diagram .dg-box small{display:block;font-size:10.5px;font-weight:500;color:var(--ink-faint);margin-top:2px}
+.arch-diagram .dg-box.broker{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber-deep)}
+.arch-diagram .dg-box.extra{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber-deep)}
+.arch-diagram .dg-box.hero{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-strong)}
+.arch-diagram .dg-box.store{background:var(--slate-soft)}
+.arch-diagram .dg-arrow{color:var(--ink-faint);font-weight:700;font-size:15px;line-height:1}
+.arch-desc{margin-top:16px;font-size:14.5px;line-height:1.5;color:var(--ink-strong);text-align:center}
+.arch-desc b{color:var(--blue-strong)}
+</style>
+</head>
+<body>
+<div class="deck">
+  <div class="stage">
+
+    <!-- ============ Intro self ============ -->
+    <section class="slide cover active" data-steps="1">
+      <div class="eyebrow"><span class="dot"></span> Final Presentation · Summer 2026</div>
+      <h1 class="s1-title">Gin Fu</h1>
+      <div class="subtitle s1-sub">PM Intern · Fluid Framework</div>
+      <div class="s1-qa">
+        <p class="s1-question">CS master's student, based in the Bay Area.</p>
+        <p class="s1-followup" data-step="1">This summer I came up to Redmond for Seattle's best season.</p>
+      </div>
+    </section>
+
+    <!-- ============ Journey overview ============ -->
+    <section class="slide" data-steps="2">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> The journey</div>
+        <h1 class="title small">Two projects, one throughline.</h1>
+      </header>
+      <div class="sbody">
+        <div class="before-after">
+          <div class="ba-card">
+            <div class="tag">Project 1 · Research &amp; prototype</div>
+            <div class="big">Is Fluid worth keeping?</div>
+            <div class="meta">Competitive analysis · a deployed AI collaborative canvas</div>
+          </div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-card after">
+            <div class="tag">Project 2 · hands-on engineering</div>
+            <div class="big">Self-hosted service solution</div>
+            <div class="meta">A full-lifecycle continuity path for third-party customers</div>
+          </div>
+        </div>
+        <p class="s2-punch" data-step="1">Project 1 asks whether Fluid deserves to stay. Project 2 makes sure the customers who bet on it <b>keep running</b> when Azure Fluid Relay retires.</p>
+        <div class="j-plan" data-step="2"><span class="j-plan-k">Today</span><span>Project 1 in brief, a quick demo, then <b>Project 2 in depth</b>.</span></div>
+      </div>
+    </section>
+
+    <!-- ============ S1 ============ -->
+    <section class="slide cover s3 p1shot" data-steps="2">
+      <div class="s3-split">
+        <div class="s3-text">
+          <h1 class="s1-title">Project 1: Fluid Framework research &amp; prototype</h1>
+          <div class="subtitle s1-sub">The decision story from my research project</div>
+          <div class="s1-qa">
+            <p class="s1-question">If Fluid didn't exist today — <b>would we still build it?</b></p>
+            <p class="s1-followup" data-step="1"><b style="color:var(--blue-strong)">Reframe:</b> Should Fluid v2 / SharedTree stay the default for AI collaborative experiences, or should Microsoft seriously consider an external framework?</p>
+          </div>
+        </div>
+        <figure class="s3-shot" data-step="2">
+          <img src="assets/first-demo.png" alt="The AI-native collaborative canvas prototype I built">
+          <figcaption>To make my recommendation credible, I tried to <em>replace&nbsp;Fluid.</em></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ S2 ============ -->
+    <section class="slide" data-steps="2">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Why it matters</div>
+        <h1 class="title small">AI didn't just join the chat.<br>It <span class="ai">joined the document.</span></h1>
+      </header>
+      <div class="sbody">
+        <div class="before-after">
+          <div class="ba-card">
+            <div class="tag">Before</div>
+            <div class="big">A one-shot chat reply</div>
+            <div class="meta">Ask → answer → gone</div>
+          </div>
+          <div class="ba-arrow" data-step="1">→</div>
+          <div class="ba-card after" data-step="1">
+            <div class="tag">Now</div>
+            <div class="big">A co-editor on a durable artifact</div>
+            <div class="meta">page · canvas · plan · tasks — it keeps evolving</div>
+          </div>
+        </div>
+        <p class="s2-punch" data-step="2">The collaboration foundation defines the boundary of what AI can safely edit, what humans can trust, and how artifacts can persist across products.</p>
+      </div>
+    </section>
+
+    <!-- ============ S4 ============ -->
+    <section class="slide s4" data-steps="4">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Evaluation model</div>
+        <h1 class="title small">How to compare fairly.</h1>
+      </header>
+      <div class="sbody">
+        <div class="ideas">
+          <div class="idea" data-step="1"><div class="num">Idea 1</div><h3>Mechanism value</h3><p class="idea-sub">How good is the core sync engine</p></div>
+          <div class="idea bar" data-step="2"><div class="num">Idea 2</div><h3>The replacement bar</h3><p class="idea-sub">Identity · storage · compliance — platform integration Fluid gives you</p></div>
+        </div>
+        <div class="formula" data-step="3">
+          <div class="term fluid">Fluid<small>+ integration it already has</small></div>
+          <div class="vs">vs</div>
+          <div class="term ext">External framework<small>+ that integration still to build</small></div>
+        </div>
+        <p class="s4-cap" data-step="4">Is any framework <b>enough</b> better to justify rebuilding everything underneath it?</p>
+      </div>
+    </section>
+
+    <!-- ============ S5 mechanism table ============ -->
+    <section class="slide vcenter" data-steps="1">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Mechanism layer</div>
+        <h1 class="title small">Other frameworks each win one lane.<br><em>SharedTree is built for the whole road.</em></h1>
+      </header>
+      <div class="sbody top">
+        <table class="p2-cmp" data-step="1">
+          <thead><tr><th>Engine</th><th>Wins (one lane)</th><th>Why that's too narrow to switch</th></tr></thead>
+          <tbody>
+            <tr><td>Yjs</td><td>Collaborative text &amp; editor ecosystem</td><td>Also needs typed objects, review state, AI-addressable nodes</td></tr>
+            <tr><td>Automerge</td><td>History &amp; merge across clients</td><td>No typed tree / schema / constraints for reviewable AI edits</td></tr>
+            <tr><td>Loro</td><td>Move &amp; delete conflict handling</td><td>One dimension, not the whole scenario</td></tr>
+            <tr><td>Liveblocks</td><td>Packaging, presence, DX</td><td>Faster packaging is not a stronger mechanism</td></tr>
+            <tr class="hero"><td>SharedTree (Fluid)</td><td>The whole loop</td><td>Native fit — service ordering, optimistic local edits, transactions, schema, and structured state form a coherent model for governed artifacts</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ S6 iceberg ============ -->
+    <section class="slide" data-steps="3">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Platform layer</div>
+        <h1 class="title small">External frameworks can offer real-time sync. <em>Only Fluid can build the trust.</em></h1>
+      </header>
+      <div class="sbody top">
+      <div class="iceberg-wrap">
+        <div class="ice-above">
+          <div class="cap">What an external CRDT offers</div>
+          <div class="tiprow">
+            <span><b>real-time sync</b></span><i></i><span><b>conflict-free merge</b></span><i></i><span><b>local persistence</b></span><i></i><span><b>presence</b></span>
+          </div>
+        </div>
+        <div class="waterline"><span>waterline</span></div>
+        <div class="ice-below" data-step="1">
+          <div class="cap">The platform layer — where trust happens</div>
+          <div class="grid">
+            <span>Identity (Entra)</span><span>SharePoint / ODSP storage</span><span>Compliance &amp; audit</span>
+            <span>eDiscovery &amp; search</span><span>Recovery &amp; regional deployment</span><span>A live service someone owns</span>
+          </div>
+        </div>
+      </div>
+      <div class="ice-caption" data-step="2">
+        <div class="a fluid"><span class="k">Fluid</span> already has this</div>
+        <div class="a ext"><span class="k">External</span> rebuild it from scratch</div>
+      </div>
+      <p class="s6-close" data-step="3">This is what makes collaboration trustworthy inside Microsoft products — not just merging edits, but carrying data the product can govern and recover. <b>That's where the replacement bar becomes real.</b></p>
+      </div>
+    </section>
+
+    <!-- ============ S7 recommendation (before demo) ============ -->
+    <section class="slide" data-steps="3">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> The recommendation</div>
+        <h1 class="title small">Across both layers — <em>keep Fluid as the default.</em></h1>
+      </header>
+      <div class="sbody">
+        <p class="verdict-lead" data-step="1">No external mechanism edge I found is large enough to outweigh the <b>Microsoft integration still to be built</b>.</p>
+        <div class="verdict-wins" data-step="1">
+          <div class="vw-head">Fluid wins on <b>both layers</b></div>
+          <ul>
+            <li>On mechanism, its structured state is <b>native</b>.</li>
+            <li>On platform, identity, storage, and compliance are <b>already wired in</b>.</li>
+          </ul>
+        </div>
+        <div class="verdict-ext" data-step="2">
+          <div class="ve-head">External frameworks still matter — where Fluid should keep improving</div>
+          <div class="ve-chips">
+            <span>First-class rich-text path</span>
+            <span>Clearer Copilot edit patterns</span>
+            <span>Easier onboarding for product teams</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ S8 demo ============ -->
+    <section class="slide" data-steps="2">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> The proof</div>
+        <h1 class="title small">From analysis to <em>working evidence.</em></h1>
+      </header>
+      <div class="sbody">
+        <div class="s7-freeze" data-step="1">A working prototype — built in 2 weeks on <span>Automerge.</span></div>
+        <div class="s7-goals" data-step="1">
+          <div class="goal"><span class="gn">1</span> Put evidence under the analysis</div>
+          <div class="goal"><span class="gn">2</span> Explore what AI-native collaboration could look like</div>
+        </div>
+        <p class="demo-note" data-step="2">It runs on <b>Azure App Service</b>. Collaboration keeps an <b>Automerge</b> document in every browser and uses <b>WebSocket only as a relay</b> — so Automerge handles the merge and convergence locally.</p>
+        <button class="demo-cta" data-step="2" id="playDemo" type="button">
+          <span class="arr">▶</span> Play the demo
+        </button>
+      </div>
+      </div>
+    </section>
+
+    <!-- ============ P2·1 — Project 2 cover ============ -->
+    <section class="slide cover s3 p2cover" data-steps="1">
+      <div class="s3-split">
+        <div class="s3-text">
+          <h1 class="s1-title">Self-host Fluid solution</h1>
+          <div class="s1-qa">
+            <p class="s1-question">Azure Fluid Relay is retiring.</p>
+            <p class="s1-followup"><b style="color:var(--blue-strong)">Third-party customers need a self-operated continuity path they can run themselves.</b></p>
+            <p class="s1-followup">Scoped to a small set of existing customers — not a new platform.</p>
+            <div class="p2phase">Design → implement → deploy → test — full lifecycle</div>
+          </div>
+        </div>
+        <figure class="s3-shot p2arch">
+          <div class="p2dg">
+            <div class="p2dg-row"><div class="p2dg-box">Fluid clients</div><div class="p2dg-box">Customer token backend<small>authenticate · JWT</small></div></div>
+            <div class="p2dg-arr">↓</div>
+            <div class="p2dg-box">alfred + nexus<small>REST + realtime sessions</small></div>
+            <div class="p2dg-arr">↓</div>
+            <div class="p2dg-box hero">Redpanda<small>Kafka-compatible broker</small></div>
+            <div class="p2dg-arr">↓</div>
+            <div class="p2dg-box">deli<small>operation sequencing</small></div>
+            <div class="p2dg-arr">↓</div>
+            <div class="p2dg-box">scriptorium + scribe<small>persistence processing</small></div>
+            <div class="p2dg-arr">↓</div>
+            <div class="p2dg-row"><div class="p2dg-box store">MongoDB<small>ops + metadata</small></div><div class="p2dg-box store">historian + gitrest<small>snapshots · Azure Files</small></div><div class="p2dg-box store">Redis<small>realtime delivery</small></div></div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ============ P2·3 — Requirements & journey ============ -->
+    <section class="slide vcenter" data-steps="1">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Requirements</div>
+        <h1 class="title small">Built to <em>what a Fluid client needs.</em></h1>
+      </header>
+      <div class="sbody top">
+        <div class="req-grid" data-step="1">
+          <div class="req-card"><div class="n">01</div><h3>Collaboration</h3><p>Connect, operation ordering, real-time updates, presence, audience.</p></div>
+          <div class="req-card"><div class="n">02</div><h3>Persistence</h3><p>Operations, checkpoints, snapshots, and cold-load.</p></div>
+          <div class="req-card"><div class="n">03</div><h3>Access &amp; identity</h3><p>Tenant, document, users, scopes, signing-key custody.</p></div>
+          <div class="req-card"><div class="n">04</div><h3>Operations &amp; migration</h3><p>Deploy, recover, upgrade — and move state off AFR.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P2·4 — Architecture comparison ============ -->
+    <section class="slide" data-steps="2">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Architecture comparison</div>
+        <h1 class="title small">What already ships isn't always the <em>best fit.</em></h1>
+        <div class="shead-note">Click any option to see its architecture.</div>
+      </header>
+      <div class="sbody top">
+        <div class="arch-groups" data-step="1">
+          <div class="arch-group">
+            <div class="arch-group-lab">Existing solutions</div>
+            <div class="arch-cards">
+              <button class="arch-card" data-arch="kafka">
+                <div class="ac-name">Full Routerlicious <small>Kafka + ZooKeeper</small></div>
+                <div class="ac-fact"><b>Best for</b>The stock full baseline</div>
+                <div class="ac-fact"><b class="pro">Pro</b>Broker-backed failover + scale-out</div>
+                <div class="ac-fact"><b class="con">Con</b>Two-service broker, heaviest</div>
+              </button>
+              <button class="arch-card" data-arch="tinylicious">
+                <div class="ac-name">Tinylicious</div>
+                <div class="ac-fact"><b>Best for</b>Quick local development</div>
+                <div class="ac-fact"><b class="pro">Pro</b>Simplest built-in dev server, instant start</div>
+                <div class="ac-fact"><b class="con">Con</b>Dev-only, local storage</div>
+              </button>
+            </div>
+          </div>
+          <div class="arch-group">
+            <div class="arch-group-lab explored">Explored for fit</div>
+            <div class="arch-cards">
+              <button class="arch-card hero" data-arch="redpanda">
+                <div class="ac-name">Full + Redpanda <small>selected</small></div>
+                <div class="ac-fact"><b>Best for</b>The customer-operated baseline</div>
+                <div class="ac-fact"><b class="pro">Pro</b>Broker benefits, one service, no new code, far cheaper</div>
+                <div class="ac-fact"><b class="con">Con</b>A newer broker to operate than Kafka</div>
+              </button>
+              <button class="arch-card" data-arch="slim">
+                <div class="ac-name">Slim</div>
+                <div class="ac-fact"><b>Best for</b>Dev / prototype, minimum footprint</div>
+                <div class="ac-fact"><b class="pro">Pro</b>Real pipeline, broker → in-process queues</div>
+                <div class="ac-fact"><b class="con">Con</b>One process, no failover</div>
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="strip-cap p2-gap" data-step="2">A strong point of view is earned, not asserted. <em>I built and ran all four, and let the data back my decision.</em></p>
+      </div>
+    </section>
+
+    <!-- ============ P2·4b — Evidence + decision ============ -->
+    <section class="slide" data-steps="3">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Recorded evidence</div>
+        <h1 class="title small">All passed — but <em>different cost.</em></h1>
+      </header>
+      <div class="sbody top">
+        <table class="p2-cmp" data-step="1">
+          <thead><tr><th>Service shape</th><th>Fluid official E2E</th><th>Broker cost</th><th>Containers</th></tr></thead>
+          <tbody>
+            <tr><td>Kafka + ZooKeeper</td><td>passed</td><td class="num">62% CPU · ~634 MiB</td><td class="num">15</td></tr>
+            <tr class="hero"><td>Full + Redpanda</td><td>passed</td><td class="num">4.9% CPU · ~289 MiB</td><td class="num">14</td></tr>
+            <tr><td>Slim</td><td>passed</td><td>no broker</td><td class="num">8</td></tr>
+            <tr><td>Tinylicious</td><td>passed</td><td>no broker</td><td class="num">1</td></tr>
+          </tbody>
+        </table>
+        <div class="why-head p2-gap" data-step="2">Why broker matters</div>
+        <div class="p2-dec" data-step="2">
+          <div class="d"><span class="num">1</span><div><b>Failure recovery.</b> A broker log keeps ordering alive through a crash; brokerless shapes reload from storage.</div></div>
+          <div class="d"><span class="num">2</span><div><b>Scale-out.</b> A broker partitions documents across workers; brokerless pins each to one process.</div></div>
+        </div>
+        <p class="verdict-lead p2-gap" data-step="3">Redpanda swaps in with no new code — <b>13× less average broker CPU, 33× less peak, 2.2× less memory, and one fewer container</b> than Kafka + ZooKeeper.</p>
+      </div>
+    </section>
+
+    <!-- ============ P2·7 — Impact / close ============ -->
+    <section class="slide" data-steps="1">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Deployed &amp; validated</div>
+        <h1 class="title small">Deployed locally and on Azure — <em>tested with real clients.</em></h1>
+      </header>
+      <div class="sbody">
+        <p class="e2e-lead">It exercises the full path:</p>
+        <div class="e2e-steps"><b>Connect</b> → <b>Create</b> → <b>Real-time sync</b> → <b>Cold-load + convergence</b> → <b>Presence</b></div>
+        <div class="run-shots p2-gap">
+          <figure><img src="assets/run-1.png" alt="Two clients editing one document, live in sync"><figcaption>Two clients, one document — live in sync</figcaption></figure>
+          <figure><img src="assets/run-2.png" alt="Network traffic served by the self-hosted Azure service"><figcaption>Traffic served by your own Azure service</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ P2·8 — Full-lifecycle deliverable ============ -->
+    <section class="slide" data-steps="1">
+      <header class="shead">
+        <div class="eyebrow"><span class="dot"></span> Full-lifecycle deliverable</div>
+        <h1 class="title small">What I delivered — <em>end to end.</em></h1>
+      </header>
+      <div class="sbody">
+        <table class="lc-table">
+          <thead><tr><th>Lifecycle area</th><th>Final solution</th><th>Delivery state</th></tr></thead>
+          <tbody>
+            <tr><td><b>Fluid service</b></td><td>Full Routerlicious, Redpanda broker</td><td>Validated — local + AKS</td></tr>
+            <tr><td><b>Operations &amp; metadata</b></td><td>MongoDB: records, ops, checkpoints</td><td>Persistent storage</td></tr>
+            <tr><td><b>Durable storage</b></td><td><code>IFileSystemManager</code> contract; Azure Files validated, others pluggable</td><td>Azure Files via cold-load; pluggable</td></tr>
+            <tr><td><b>Token &amp; identity</b></td><td>Customer backend: auth + short-lived JWTs</td><td>Dev path validated; prod handed off</td></tr>
+            <tr><td><b>Local deploy</b></td><td>Docker Compose (amd64 + arm64)</td><td>Health + smoke verified</td></tr>
+            <tr><td><b>Azure deploy</b></td><td>ACR + AKS + Helm, PVCs, Azure Files</td><td>Validated with Fluid Chat</td></tr>
+            <tr><td><b>Migration</b></td><td>Freeze → recreate → validate → cutover</td><td>Latest-state done; cutover handed off</td></tr>
+            <tr><td><b>Maintenance</b></td><td>Pin, build, test, deploy, monitor, roll back</td><td>Operating model defined</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- chrome -->
+<div class="progress"><div class="fill"></div></div>
+<div class="dots" id="dots"></div>
+<div class="chrome">
+  <button class="nbtn" id="prev" aria-label="Previous">‹</button>
+  <span class="counter" id="counter">1 / 8</span>
+  <button class="nbtn" id="next" aria-label="Next">›</button>
+</div>
+<div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>F</kbd> fullscreen · <kbd>Esc</kbd> close panel</div>
+
+<!-- drill-down modal -->
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <div class="head">
+      <div class="ttl"><span id="mName"></span><span class="badge" id="mBadge"></span></div>
+      <button class="close" id="mClose" aria-label="Close">✕</button>
+    </div>
+    <div class="body arch-modal-body">
+      <div class="arch-diagram" id="mDiagram"></div>
+      <div class="arch-desc" id="mDesc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- fullscreen video modal -->
+<div class="video-back" id="videoBack">
+  <button class="video-close" id="videoClose" aria-label="Close">✕</button>
+  <div class="video-frame">
+    <iframe id="videoFrame" src="" title="Prototype demo — collaborative canvas on Automerge" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>
+  </div>
+</div>
+
+<script>
+/* ---------------- engine drill-down data ---------------- */
+const G = {
+  yjs:`<svg width="92" height="64" viewBox="0 0 92 64"><g fill="none" stroke="#5a6b86" stroke-width="2"><rect x="6" y="26" width="14" height="14" rx="3" fill="#eef2f8"/><rect x="26" y="26" width="14" height="14" rx="3" fill="#eef2f8"/><rect x="46" y="26" width="14" height="14" rx="3" fill="#eef2f8"/><rect x="66" y="26" width="14" height="14" rx="3" fill="#eef2f8"/><path d="M20 33h6M40 33h6M60 33h6"/></g></svg>`,
+  automerge:`<svg width="92" height="74" viewBox="0 0 92 74"><g fill="none" stroke="#5a6b86" stroke-width="2"><rect x="20" y="8" width="40" height="50" rx="5" fill="#eef2f8"/><path d="M28 20h24M28 30h24M28 40h16"/><path d="M60 33h14M74 33v22M74 55h-10" stroke="#6f86a8"/><circle cx="74" cy="33" r="3.5" fill="#6f86a8" stroke="none"/></g></svg>`,
+  loro:`<svg width="92" height="74" viewBox="0 0 92 74"><g fill="none" stroke="#5a6b86" stroke-width="2"><circle cx="46" cy="14" r="7" fill="#eef2f8"/><circle cx="26" cy="44" r="7" fill="#eef2f8"/><circle cx="66" cy="44" r="7" fill="#eef2f8"/><path d="M42 20 31 38M50 20 61 38"/><path d="M26 51v8h40v-8" stroke="#6f86a8" stroke-dasharray="3 3"/></g></svg>`,
+  liveblocks:`<svg width="92" height="68" viewBox="0 0 92 68"><g fill="none" stroke="#5a6b86" stroke-width="2"><rect x="8" y="14" width="76" height="40" rx="12" fill="#eaf1fb" stroke="#6f86a8"/><rect x="24" y="29" width="11" height="11" rx="2" fill="#fff"/><rect x="40" y="29" width="11" height="11" rx="2" fill="#fff"/><rect x="56" y="29" width="11" height="11" rx="2" fill="#fff"/></g></svg>`,
+  sharedtree:`<svg width="92" height="74" viewBox="0 0 92 74"><g fill="none" stroke="#3f6fa3" stroke-width="2"><rect x="34" y="6" width="24" height="14" rx="3" fill="#e4eefb"/><rect x="10" y="38" width="24" height="14" rx="3" fill="#e4eefb"/><rect x="58" y="38" width="24" height="14" rx="3" fill="#e4eefb"/><path d="M46 20v10M46 30 22 38M46 30 70 38"/><path d="M14 58h16M62 58h16" stroke="#3f6fa3"/></g></svg>`
+};
+const DETAILS = {
+  yjs:{name:'Yjs',badge:'one lane',how:'Text-first CRDT, rich editor bindings.',lane:'Strongest ecosystem for collaborative text & editor bindings.',why:'Our scenario also needs structured objects, review state, AI-targetable nodes — not Yjs’s center of gravity.'},
+  automerge:{name:'Automerge',badge:'one lane',how:'Local-first document CRDT.',lane:'Strong history & merge across clients — a useful probe for my prototype.',why:'On its own: no typed trees, schema, or constraints for reviewable AI edits.'},
+  loro:{name:'Loro',badge:'one lane',how:'CRDT with a genuinely movable tree.',lane:'Strong move-and-delete conflict handling when objects move or disappear.',why:'Still one slice, not the whole story.'},
+  liveblocks:{name:'Liveblocks',badge:'one lane',how:'Hosted service wrapping Yjs.',lane:'Packages rooms, presence, APIs — teams ship faster. Great DX.',why:'Faster packaging is not a stronger underlying mechanism.'},
+  sharedtree:{name:'SharedTree',badge:'native fit',hero:true,how:'Typed tree: schema, transactions, branch/rebase.',lane:'Not one lane but the whole loop — a typed node to target, constraints that keep the edit valid, and review before anything commits.',whyLab:'Why it fits',why:'So AI can safely edit a durable, evolving artifact.'}
+};
+
+/* ---------------- deck navigation ---------------- */
+const slides=[...document.querySelectorAll('.slide')];
+const fill=document.querySelector('.progress .fill');
+const counter=document.getElementById('counter');
+const dotsWrap=document.getElementById('dots');
+let si=0, step=0, modalOpen=false;
+
+slides.forEach((_,i)=>{const b=document.createElement('b');b.onclick=()=>{si=i;step=0;render();};dotsWrap.appendChild(b);});
+const dots=[...dotsWrap.children];
+  const maxStep=s=>0; // all content shown at once; arrows go straight to next/prev slide
+
+function render(){
+  slides.forEach((s,i)=>s.classList.toggle('active',i===si));
+  const slide=slides[si];
+  slide.querySelectorAll('[data-step]').forEach(el=>{
+    el.classList.toggle('shown', (+el.dataset.step)<=step);
+  });
+  counter.textContent=`${si+1} / ${slides.length}`;
+  const total=slides.length-1;
+  fill.style.width=(total? (si/total)*100:0)+'%';
+  dots.forEach((d,i)=>d.classList.toggle('on',i===si));
+  history.replaceState(null,'','#'+(si+1));
+}
+function next(){const s=slides[si];if(step<maxStep(s)){step++;render();return;}if(si<slides.length-1){si++;step=0;render();}}
+function prev(){if(step>0){step--;render();return;}if(si>0){si--;step=maxStep(slides[si]);render();}}
+
+document.getElementById('next').onclick=()=>next();
+document.getElementById('prev').onclick=()=>prev();
+
+document.addEventListener('keydown',e=>{
+  if(modalOpen){if(e.key==='Escape'){closeModal();closeVideo();}return;}
+  if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();next();}
+  else if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();prev();}
+  else if(e.key==='Home'){si=0;step=0;render();}
+  else if(e.key==='End'){si=slides.length-1;step=maxStep(slides[si]);render();}
+  else if(e.key==='f'||e.key==='F'){toggleFs();}
+});
+function toggleFs(){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.();}
+
+/* ---------------- architecture drill-down ---------------- */
+const ARCH = {
+  kafka:{name:'Full Routerlicious', badge:'Kafka + ZooKeeper',
+    desc:'Full Routerlicious on Kafka + ZooKeeper — the stock baseline, but the <b>heaviest</b>: a two-service broker.',
+    diagram:`<div class="dg-row"><div class="dg-box">Client</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">alfred<small>REST</small></div><div class="dg-box">nexus<small>websocket</small></div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box broker">Kafka</div><div class="dg-box extra">ZooKeeper</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">deli → scriptorium → scribe</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box store">Mongo</div><div class="dg-box store">historian</div><div class="dg-box store">Redis</div></div>`},
+  redpanda:{name:'Full + Redpanda', badge:'selected', hero:true,
+    desc:'Full Routerlicious on <b>Redpanda</b> — broker benefits, one service instead of two, no new code, and far cheaper.',
+    diagram:`<div class="dg-row"><div class="dg-box">Client</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">alfred<small>REST</small></div><div class="dg-box">nexus<small>websocket</small></div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box hero">Redpanda<small>Kafka wire · no ZooKeeper</small></div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">deli → scriptorium → scribe</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box store">Mongo</div><div class="dg-box store">historian</div><div class="dg-box store">Redis</div></div>`},
+  slim:{name:'Slim', badge:'single process',
+    desc:'The full Routerlicious pipeline with the broker swapped for <b>in-process queues</b> — lighter to run, but single-process, no failover.',
+    diagram:`<div class="dg-row"><div class="dg-box">Client</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">slim process<small>WebServer + in-memory ordering (deli · scriptorium · scribe)</small></div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box store">Mongo</div><div class="dg-box store">historian</div></div>`},
+  tinylicious:{name:'Tinylicious', badge:'dev only',
+    desc:'The simplest dev server with the fastest startup — but <b>development-only</b>, with local storage.',
+    diagram:`<div class="dg-row"><div class="dg-box">Client</div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box">Tinylicious<small>single dev process</small></div></div><div class="dg-arrow">↓</div><div class="dg-row"><div class="dg-box store">local / in-memory storage</div></div>`}
+};
+
+/* ---------------- architecture modal ---------------- */
+const back=document.getElementById('modalBack');
+const modal=document.getElementById('modal');
+function openArch(id){
+  const d=ARCH[id];if(!d)return;
+  document.getElementById('mName').textContent=d.name;
+  document.getElementById('mBadge').textContent=d.badge||'';
+  document.getElementById('mDiagram').innerHTML=d.diagram||'';
+  document.getElementById('mDesc').innerHTML=d.desc||'';
+  modal.classList.toggle('hero-modal',!!d.hero);
+  back.classList.add('open');modalOpen=true;
+}
+function closeModal(){back.classList.remove('open');modalOpen=false;}
+document.getElementById('mClose').onclick=closeModal;
+back.addEventListener('click',e=>{if(e.target===back)closeModal();});
+document.querySelectorAll('.arch-card').forEach(c=>c.addEventListener('click',()=>openArch(c.dataset.arch)));
+
+/* ---------------- fullscreen video modal ---------------- */
+const LOOM_EMBED='https://www.loom.com/embed/ce30b6bff6aa4076a5d196ad625add41?autoplay=1';
+const videoBack=document.getElementById('videoBack');
+const videoFrame=document.getElementById('videoFrame');
+function openVideo(){videoFrame.src=LOOM_EMBED;videoBack.classList.add('open');modalOpen=true;}
+function closeVideo(){videoBack.classList.remove('open');videoFrame.src='';modalOpen=false;}
+document.getElementById('videoClose').onclick=closeVideo;
+videoBack.addEventListener('click',e=>{if(e.target===videoBack)closeVideo();});
+const playBtn=document.getElementById('playDemo');if(playBtn)playBtn.addEventListener('click',openVideo);
+
+function fromHash(){
+  const m=location.hash.match(/^#(\d+)(?:\.(\d+))?$/);
+  if(m){const n=+m[1];if(n>=1&&n<=slides.length){si=n-1;step=m[2]?Math.min(+m[2],maxStep(slides[si])):0;}}
+}
+window.addEventListener('hashchange',()=>{fromHash();render();});
+fromHash();
+render();
+</script>
+</body>
+</html>
